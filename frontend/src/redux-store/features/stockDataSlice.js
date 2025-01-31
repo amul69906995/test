@@ -1,45 +1,51 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
-const shortPolling = async (stockId, duration, signal) => {
-  if (signal.aborted) return; // Stop polling if aborted
-  
+
+// Short polling function that continuously fetches stock data
+const shortPolling = async (stockId, duration, dispatch) => {
   try {
     const { data } = await axios.post(
       `${import.meta.env.VITE_BACKEND_BASE_URL}/api/stocks/${stockId}`,
-      { duration },
-      { signal }
+      { duration }
     );
 
     console.log("short polling data", data);
+
+    // Update Redux state after every poll
+    dispatch(updateStockData(data));
 
     if (data.status === "COMPLETE") return data;
 
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    return await shortPolling(stockId, duration, signal);
+    return await shortPolling(stockId, duration, dispatch);
   } catch (error) {
-    if (axios.isCancel(error)) {
-      console.log("Polling cancelled.");
-    } else {
-      console.error("Polling error:", error);
-    }
+    console.error("Polling error:", error);
   }
 };
+
+// Redux Thunk: Calls shortPolling and updates state
 export const fetchAStockData = createAsyncThunk(
   "fetchStockData",
-  async ({ stockId, duration, abortController }) => {
-    return await shortPolling(stockId, duration, abortController.signal);
+  async ({ stockId, duration }, { dispatch }) => {
+    return await shortPolling(stockId, duration, dispatch);
   }
 );
 
-
+// Redux slice
 const stockDataSlice = createSlice({
   name: "stockData",
   initialState: { data: [], status: "idle" },
-  reducers: {},
+  reducers: {
+    updateStockData: (state, action) => {
+      state.data = action.payload; // Updates state after every poll
+    },
+  },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchAStockData.pending, (state) => { state.status = "loading"; })
+      .addCase(fetchAStockData.pending, (state) => {
+        state.status = "loading";
+      })
       .addCase(fetchAStockData.fulfilled, (state, action) => {
         state.status = "succeeded";
         state.data = action.payload;
@@ -47,4 +53,7 @@ const stockDataSlice = createSlice({
   },
 });
 
+// Export action and reducer
+export const { updateStockData } = stockDataSlice.actions;
 export default stockDataSlice.reducer;
+

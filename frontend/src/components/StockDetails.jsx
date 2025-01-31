@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
-import { Line } from "react-chartjs-2";
 import { fetchAStockData } from "../redux-store/features/stockDataSlice";
-import { CircularProgress, Typography, Button, Box } from "@mui/material";
+import {  Typography, Button, Box } from "@mui/material";
 import StockList from './StockList.jsx';
 import StockInfo from "./StockInfo";
 import LineGraph from "./LineGraph.jsx";

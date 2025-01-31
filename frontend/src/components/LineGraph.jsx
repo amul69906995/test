@@ -7,7 +7,7 @@ import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement);
 
 const LineGraph = () => {
-  const { data, status } = useSelector((state) => state.stockData);
+  const { data } = useSelector((state) => state.stockData);
   const [chartType, setChartType] = useState('line'); // State to toggle chart type
   
   // Format data for Chart.js (X: timestamp, Y: price)
@@ -66,7 +66,6 @@ const LineGraph = () => {
   const toggleChartType = (type) => {
     setChartType(type);
   };
-
   return (
     <div>
       <h1>Line Graph</h1>

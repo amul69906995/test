@@ -97,14 +97,25 @@ Eg.
 
 ## Running services
 ### Instructions to run the UI
-_enter details here!_
+```bash
+git clone https://github.com/amul69906995/test.git
+cd frontend
+npm i
+npm run dev
+```
 
 ### Add a demonstration video 
 _make a demonstration video showcasing frontend not longer than 2-3min, just explain what you have done!_
 
+![Alloan AI 3](./assets/alloanai3.png)
+![Alloan AI 2](./assets/alloanai2.png)
+![Alloan AI 1](./assets/alloanai1.png)
+
+[Watch the demonstration video](./assets/video-demo1.1.mp4)
+
 ### Instructions to run the backend API
 ```bash
 cd backend
-yarn # or npm, to install dependencies
-yarn start # or npm start, to...start?
+npm i
+nodemon index.ts
 ```

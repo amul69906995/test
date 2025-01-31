@@ -1,25 +1,45 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 
+// Global AbortController to cancel previous polling
+let globalAbortController = null;
+
 // Short polling function that continuously fetches stock data
-const shortPolling = async (stockId, duration, dispatch) => {
+const shortPolling = async (stockId, duration, dispatch, signal) => {
   try {
-    const { data } = await axios.post(
-      `${import.meta.env.VITE_BACKEND_BASE_URL}/api/stocks/${stockId}`,
-      { duration }
-    );
+    while (true) {
+      if (signal.aborted) {
+        console.log("Polling stopped due to duration change.");
+        return null;
+      }
 
-    console.log("short polling data", data);
+      const { data } = await axios.post(
+        `${import.meta.env.VITE_BACKEND_BASE_URL}/api/stocks/${stockId}`,
+        { duration },
+        { signal }
+      );
 
-    // Update Redux state after every poll
-    dispatch(updateStockData(data));
+      console.log("Short polling data:", data);
 
-    if (data.status === "COMPLETE") return data;
+      // Dispatch live updates to Redux
+      dispatch(updateStockData(data));
 
-    await new Promise(resolve => setTimeout(resolve, 2000));
+      if (data.status === "COMPLETE") return data;
 
-    return await shortPolling(stockId, duration, dispatch);
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(resolve, 2000);
+        signal.addEventListener("abort", () => {
+          clearTimeout(timeout);
+          console.log("Polling aborted during wait.");
+          reject(new Error("Polling Aborted"));
+        });
+      });
+    }
   } catch (error) {
+    if (axios.isCancel(error) || error.message === "Polling Aborted") {
+      console.log("Polling stopped.");
+      return null;
+    }
     console.error("Polling error:", error);
   }
 };
@@ -28,7 +48,18 @@ const shortPolling = async (stockId, duration, dispatch) => {
 export const fetchAStockData = createAsyncThunk(
   "fetchStockData",
   async ({ stockId, duration }, { dispatch }) => {
-    return await shortPolling(stockId, duration, dispatch);
+    // Cancel previous polling
+    if (globalAbortController) {
+      globalAbortController.abort();
+    }
+
+    // Create a new AbortController for the new request
+    globalAbortController = new AbortController();
+
+    // Reset state before new polling starts
+    dispatch(resetStockData());
+
+    return await shortPolling(stockId, duration, dispatch, globalAbortController.signal);
   }
 );
 
@@ -39,6 +70,10 @@ const stockDataSlice = createSlice({
   reducers: {
     updateStockData: (state, action) => {
       state.data = action.payload; // Updates state after every poll
+    },
+    resetStockData: (state) => {
+      state.data = [];
+      state.status = "idle";
     },
   },
   extraReducers: (builder) => {
@@ -53,7 +88,8 @@ const stockDataSlice = createSlice({
   },
 });
 
-// Export action and reducer
-export const { updateStockData } = stockDataSlice.actions;
+// Export actions and reducer
+export const { updateStockData, resetStockData } = stockDataSlice.actions;
 export default stockDataSlice.reducer;
+
 

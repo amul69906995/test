@@ -1,48 +1,45 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
-import { Line } from "react-chartjs-2";
 import { fetchAStockData } from "../redux-store/features/stockDataSlice";
-import { CircularProgress, Typography, Button, Box } from "@mui/material";
+import { Typography, Button, Box } from "@mui/material";
 import StockList from './StockList.jsx';
 import StockInfo from "./StockInfo";
+import LineGraph from "./LineGraph.jsx";
 
 const StockDetails = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
   const { stocks } = useSelector((state) => state.stocks);
   const { data, status } = useSelector((state) => state.stockData);
-  
   const selectedStock = stocks.find((stock) => stock.id === id);
-  const [currentDuration, setCurrentDuration] = useState(null); // Initially set to null
-
-  // Only set currentDuration once selectedStock is available
+  const [currentDuration, setCurrentDuration] = useState(null);
+  const [abortController, setAbortController] = useState(null);
+  
   useEffect(() => {
-    if (selectedStock && selectedStock.available && selectedStock.available.length > 0) {
+    if (selectedStock && selectedStock.available?.length > 0) {
       setCurrentDuration(selectedStock.available[0]); // Set to the first available duration
     }
   }, [selectedStock]);
 
-  // Fetch stock data when stock ID or duration changes
   useEffect(() => {
-    if (selectedStock&&currentDuration) {
-      console.log(id,currentDuration)
-      dispatch(fetchAStockData({ stockId: id, duration: currentDuration }));
+    if (selectedStock && currentDuration) {
+      if (abortController) abortController.abort(); // Cancel previous polling
+      const newAbortController = new AbortController();
+      setAbortController(newAbortController);
+
+      dispatch(fetchAStockData({ stockId: id, duration: currentDuration, abortController: newAbortController }));
     }
   }, [id, currentDuration, dispatch, selectedStock]);
 
   const handleDurationChange = (duration) => {
-    setCurrentDuration(duration); 
+    setCurrentDuration(duration);
   };
 
   return (
     <>
       <StockList />
-      
-      {/* Stock Info Section */}
       <StockInfo stock={selectedStock} />
-
-      {/* Inline Duration Selection */}
       <Box mt={2}>
         <Typography variant="h6">Select Duration</Typography>
         <Box display="flex" gap={2} mt={1}>
@@ -58,10 +55,9 @@ const StockDetails = () => {
           ))}
         </Box>
       </Box>
+      <LineGraph data={data} status={status} />
     </>
   );
 };
 
 export default StockDetails;
-
-
